@@ -49,15 +49,38 @@ if uploaded_file is None:
     )
     st.stop()
 
+
 try:
-    raw_df = pd.read_csv(uploaded_file)
+    raw_df = pd.read_csv(uploaded_file, encoding="utf-8-sig")
 except Exception as exc:
     st.error(f"Could not read the CSV file: {exc}")
     st.stop()
 
-if "Class" not in raw_df.columns:
-    st.error("The uploaded CSV must contain a column named 'Class'.")
+# Clean column names
+raw_df.columns = [
+    str(col).replace("\ufeff", "").strip()
+    for col in raw_df.columns
+]
+
+# Find the target column regardless of capitalization
+class_columns = [
+    col for col in raw_df.columns
+    if col.casefold() == "class"
+]
+
+if not class_columns:
+    st.error(
+        "Target column 'Class' was not found. "
+        f"Columns in your file: {list(raw_df.columns)}"
+    )
     st.stop()
+
+# Rename target column to the exact name used throughout the app
+raw_df = raw_df.rename(columns={class_columns[0]: "Class"})
+
+# Remove duplicate column names
+raw_df = raw_df.loc[:, ~raw_df.columns.duplicated()].copy()
+
 
 if raw_df.empty or raw_df["Class"].nunique() < 2:
     st.error("The dataset must contain examples of both classes: 0 (legitimate) and 1 (fraud).")
