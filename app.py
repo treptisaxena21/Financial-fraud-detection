@@ -28,8 +28,8 @@ st.warning(
 
 with st.sidebar:
     st.header("Settings")
- uploaded_file = st.file_uploader("Upload creditcard.csv", type=["csv"])
-     sample_limit = st.selectbox(
+    uploaded_file = st.file_uploader("Upload creditcard.csv", type=["csv"])
+    sample_limit = st.selectbox(
         "Maximum rows to use (faster training)",
         [20000, 50000, 100000, 284807],
         index=2
@@ -49,38 +49,15 @@ if uploaded_file is None:
     )
     st.stop()
 
-
 try:
-    raw_df = pd.read_csv(uploaded_file, encoding="utf-8-sig")
+    raw_df = pd.read_csv(uploaded_file)
 except Exception as exc:
     st.error(f"Could not read the CSV file: {exc}")
     st.stop()
 
-# Clean column names
-raw_df.columns = [
-    str(col).replace("\ufeff", "").strip()
-    for col in raw_df.columns
-]
-
-# Find the target column regardless of capitalization
-class_columns = [
-    col for col in raw_df.columns
-    if col.casefold() == "class"
-]
-
-if not class_columns:
-    st.error(
-        "Target column 'Class' was not found. "
-        f"Columns in your file: {list(raw_df.columns)}"
-    )
+if "Class" not in raw_df.columns:
+    st.error("The uploaded CSV must contain a column named 'Class'.")
     st.stop()
-
-# Rename target column to the exact name used throughout the app
-raw_df = raw_df.rename(columns={class_columns[0]: "Class"})
-
-# Remove duplicate column names
-raw_df = raw_df.loc[:, ~raw_df.columns.duplicated()].copy()
-
 
 if raw_df.empty or raw_df["Class"].nunique() < 2:
     st.error("The dataset must contain examples of both classes: 0 (legitimate) and 1 (fraud).")
@@ -92,23 +69,16 @@ raw_df = raw_df.dropna(subset=["Class"])
 raw_df = raw_df[raw_df["Class"].isin([0, 1])]
 raw_df["Class"] = raw_df["Class"].astype(int)
 
-
 if len(raw_df) > sample_limit:
-    # Stratified sampling keeps the Class column intact
-    raw_df, _ = train_test_split(
-        raw_df,
-        train_size=sample_limit,
-        random_state=42,
-        stratify=raw_df["Class"]
+    # Stratified sampling preserves the rare fraud class better than simple random sampling.
+    raw_df = (
+        raw_df.groupby("Class", group_keys=False)
+        .apply(lambda group: group.sample(
+            n=max(1, round(sample_limit * len(group) / len(raw_df))),
+            random_state=42
+        ))
+        .sample(frac=1, random_state=42)
     )
-
-raw_df = raw_df.reset_index(drop=True)
-
-# Verify that the target column still exists
-if "Class" not in raw_df.columns:
-    st.error("Class column is missing after sampling. Please check your dataset.")
-    st.stop()
-
 
 st.caption(f"Rows loaded for this run: {len(raw_df):,}")
 m1, m2, m3 = st.columns(3)
