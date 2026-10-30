@@ -92,16 +92,23 @@ raw_df = raw_df.dropna(subset=["Class"])
 raw_df = raw_df[raw_df["Class"].isin([0, 1])]
 raw_df["Class"] = raw_df["Class"].astype(int)
 
+
 if len(raw_df) > sample_limit:
-    # Stratified sampling preserves the rare fraud class better than simple random sampling.
-    raw_df = (
-        raw_df.groupby("Class", group_keys=False)
-        .apply(lambda group: group.sample(
-            n=max(1, round(sample_limit * len(group) / len(raw_df))),
-            random_state=42
-        ))
-        .sample(frac=1, random_state=42)
+    # Stratified sampling keeps the Class column intact
+    raw_df, _ = train_test_split(
+        raw_df,
+        train_size=sample_limit,
+        random_state=42,
+        stratify=raw_df["Class"]
     )
+
+raw_df = raw_df.reset_index(drop=True)
+
+# Verify that the target column still exists
+if "Class" not in raw_df.columns:
+    st.error("Class column is missing after sampling. Please check your dataset.")
+    st.stop()
+
 
 st.caption(f"Rows loaded for this run: {len(raw_df):,}")
 m1, m2, m3 = st.columns(3)
