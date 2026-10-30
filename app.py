@@ -28,7 +28,13 @@ st.warning(
 
 with st.sidebar:
     st.header("Settings")
-    uploaded_file = st.file_uploader("Upload creditcard.csv", type=["csv"])
+   uploaded_file = st.file_uploader("Upload creditcard.csv (optional)", type=["csv"])
+
+if uploaded_file is not None:
+    raw_df = pd.read_csv(uploaded_file)
+else:
+    raw_df = pd.read_csv("creditcard.csv")
+    
     sample_limit = st.selectbox(
         "Maximum rows to use (faster training)",
         [20000, 50000, 100000, 284807],
