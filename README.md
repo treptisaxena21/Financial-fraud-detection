@@ -1,3 +1,6 @@
+**App Link:** https://financial-fraud-detection-imdalkweuazo4fzrypr8p6.streamlit.app/   
+
+
 # 🛡️ AI-Powered Financial Fraud Detection System
 
 ### Machine Learning | Artificial Neural Networks | Python | Streamlit
